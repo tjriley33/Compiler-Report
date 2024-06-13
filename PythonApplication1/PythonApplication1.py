@@ -34,7 +34,7 @@ def check_build_failed(file_path):
 
 # Define a function to generate the HTML report
 def generate_html_report(federal_builds, state_builds):
-    report_time = datetime.now().strftime("%m-%d-%Y %I:%M %p (CST)")
+    report_time = datetime.now().strftime("%m-%d-%Y %I:%M %p")
 
     html_content = f"""
 <html>
