@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import webbrowser
+import tkinter as tk
 
 # Define the base path
 base_path = r"\\mhvfs01.taxact.com\Development\Tax2024"
@@ -117,29 +118,48 @@ def generate_html_report(federal_builds, state_builds):
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
 # Check each location for build failures
-federal_builds = []
-state_builds = []
+def check_builds():
+    federal_builds = []
+    state_builds = []
 
-for product in products:
-    for product_family, packages in product_families.items():
-        if product_family == "Federal":
-            for package in packages:
-                for build_type in federal_build_types:
-                    file_path = os.path.join(base_path, product, product_family, package, build_type, "compiler.err")
-                    if check_build_failed(file_path):
-                        timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
-                        federal_builds.append((product, product_family, "", package, build_type, file_path, timestamp))
-        elif product_family == "States":
-            for state in packages:
-                for package in federal_packages:
-                    for build_type in state_build_types:
-                        file_path = os.path.join(base_path, product, product_family, state, package, build_type, "compiler.err")
+    for product in products:
+        for product_family, packages in product_families.items():
+            if product_family == "Federal":
+                for package in packages:
+                    for build_type in federal_build_types:
+                        file_path = os.path.join(base_path, product, product_family, package, build_type, "compiler.err")
                         if check_build_failed(file_path):
                             timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
-                            state_builds.append((product, product_family, state, package, build_type, file_path, timestamp))
+                            federal_builds.append((product, product_family, "", package, build_type, file_path, timestamp))
+            elif product_family == "States":
+                for state in packages:
+                    for package in federal_packages:
+                        for build_type in state_build_types:
+                            file_path = os.path.join(base_path, product, product_family, state, package, build_type, "compiler.err")
+                            if check_build_failed(file_path):
+                                timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+                                state_builds.append((product, product_family, state, package, build_type, file_path, timestamp))
 
-# Sort state builds by state
-state_builds.sort(key=lambda x: x[2])
+    # Sort state builds by state
+    state_builds.sort(key=lambda x: x[2])
 
-# Generate the HTML report
-generate_html_report(federal_builds, state_builds)
+    # Generate the HTML report
+    generate_html_report(federal_builds, state_builds)
+
+# Define the main function to create the GUI
+def main():
+    root = tk.Tk()
+    root.title("Compiler.err Report Generator")
+    root.geometry("300x150")
+
+    label = tk.Label(root, text="Generate Compiler.err Report")
+    label.pack(pady=10)
+
+    generate_button = tk.Button(root, text="Generate Report", command=check_builds)
+    generate_button.pack(pady=20)
+
+    root.mainloop()
+
+# Run the main function
+if __name__ == "__main__":
+    main()
