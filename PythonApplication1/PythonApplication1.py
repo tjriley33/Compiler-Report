@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 import webbrowser
 import tkinter as tk
+from threading import Thread
+
 
 # Define the base path
 base_path = r"\\mhvfs01.taxact.com\Development\Tax2024"
@@ -30,7 +32,8 @@ def check_build_failed(file_path):
             if "Build FAILED" in content:
                 return True
     except Exception as e:
-        print(f"Error reading file {file_path}: {e}")
+        # print(f"Error reading file {file_path}: {e}")
+        pass
     return False
 
 # Define a function to generate the HTML report
@@ -41,6 +44,7 @@ def generate_html_report(federal_builds, state_builds):
 <html>
 <head>
 <title>2024 Compiler.err Report</title>
+<script src="https://kryogenix.org/code/browser/sorttable/sorttable.js"></script>
 </head>
 <body>
 <center><h1 style="margin-bottom:0">2024 Compiler.err Report</h1></center>
@@ -49,19 +53,21 @@ def generate_html_report(federal_builds, state_builds):
 <hr style="height:3px;border-width:0;color:gray;background-color:gray">
 <p>
 <h2>Federal Builds</h2>
-<table style="width:100%" border="1">
+<table class="sortable" style="width:100%" border="1">
 <tr>
 <th width="7%" align="center">Product</th>
 <th width="7%" align="center">Product Family</th>
 <th width="10%" align="center">Package</th>
 <th width="15%" align="center">Build</th>
 <th width="7%" align="center">Status</th>
-<th width="34%" align="center">Compiler.err File Path</th>
-<th width="20%" align="center">Timestamp</th>
+<th width="25%" align="center">Compiler.err File Path</th>
+<th width="15%" align="center">Process.err</th>
+<th width="22%" align="center">Timestamp</th>
 </tr>"""
 
     for build in federal_builds:
         product, product_family, state, package, build_type, file_path, timestamp = build
+        process_err_path = file_path.replace("compiler.err", "process.err")
         html_content += f"""
 <tr>
 <td align="center">{product}</td>
@@ -70,6 +76,7 @@ def generate_html_report(federal_builds, state_builds):
 <td align="center">{build_type}</td>
 <td align="center"><font color="red">BUILD FAILED</font></td>
 <td align="center"><a href="{file_path}" target="_blank">{file_path}</a></td>
+<td align="center"><a href="{process_err_path}" target="_blank">process.err</a></td>
 <td align="center">{timestamp}</td>
 </tr>"""
 
@@ -79,7 +86,7 @@ def generate_html_report(federal_builds, state_builds):
 <hr style="height:3px;border-width:0;color:gray;background-color:gray">
 <p>
 <h2>State Builds</h2>
-<table style="width:100%" border="1">
+<table class="sortable" style="width:100%" border="1">
 <tr>
 <th width="7%" align="center">Product</th>
 <th width="7%" align="center">Product Family</th>
@@ -87,12 +94,14 @@ def generate_html_report(federal_builds, state_builds):
 <th width="10%" align="center">Package</th>
 <th width="15%" align="center">Build</th>
 <th width="7%" align="center">Status</th>
-<th width="34%" align="center">Compiler.err File Path</th>
-<th width="20%" align="center">Timestamp</th>
+<th width="25%" align="center">Compiler.err File Path</th>
+<th width="15%" align="center">Process.err</th>
+<th width="22%" align="center">Timestamp</th>
 </tr>"""
 
     for build in state_builds:
         product, product_family, state, package, build_type, file_path, timestamp = build
+        process_err_path = file_path.replace("compiler.err", "process.err")
         html_content += f"""
 <tr>
 <td align="center">{product}</td>
@@ -102,6 +111,7 @@ def generate_html_report(federal_builds, state_builds):
 <td align="center">{build_type}</td>
 <td align="center"><font color="red">BUILD FAILED</font></td>
 <td align="center"><a href="{file_path}" target="_blank">{file_path}</a></td>
+<td align="center"><a href="{process_err_path}" target="_blank">process.err</a></td>
 <td align="center">{timestamp}</td>
 </tr>"""
 
@@ -117,8 +127,13 @@ def generate_html_report(federal_builds, state_builds):
     # Open the generated HTML file in the default web browser
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
+
+
 # Check each location for build failures
-def check_builds():
+def check_builds(button):
+    button.config(text="Compiling...", state=tk.DISABLED, bg="blue")
+    button.update_idletasks()
+
     federal_builds = []
     state_builds = []
 
@@ -129,7 +144,7 @@ def check_builds():
                     for build_type in federal_build_types:
                         file_path = os.path.join(base_path, product, product_family, package, build_type, "compiler.err")
                         if check_build_failed(file_path):
-                            timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+                            timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %I:%M:%S %p')
                             federal_builds.append((product, product_family, "", package, build_type, file_path, timestamp))
             elif product_family == "States":
                 for state in packages:
@@ -137,7 +152,7 @@ def check_builds():
                         for build_type in state_build_types:
                             file_path = os.path.join(base_path, product, product_family, state, package, build_type, "compiler.err")
                             if check_build_failed(file_path):
-                                timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+                                timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %I:%M:%S %p')
                                 state_builds.append((product, product_family, state, package, build_type, file_path, timestamp))
 
     # Sort state builds by state
@@ -146,16 +161,19 @@ def check_builds():
     # Generate the HTML report
     generate_html_report(federal_builds, state_builds)
 
+    button.config(text="Generate Report", state=tk.NORMAL, bg="SystemButtonFace")
+    button.update_idletasks()
+
 # Define the main function to create the GUI
 def main():
     root = tk.Tk()
     root.title("Compiler.err Report Generator")
     root.geometry("300x150")
 
-    label = tk.Label(root, text="Generate Compiler.err Report")
-    label.pack(pady=10)
+    # label = tk.Label(root, text="Generate Compiler.err Report")
+    # label.pack(pady=10)
 
-    generate_button = tk.Button(root, text="Generate Report", command=check_builds)
+    generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button,)).start())
     generate_button.pack(pady=20)
 
     root.mainloop()
