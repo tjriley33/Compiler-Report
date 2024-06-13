@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import webbrowser
 
 # Define the base path
 base_path = r"\\mhvfs01.taxact.com\Development\Tax2024"
@@ -104,8 +105,12 @@ def generate_html_report(federal_builds, state_builds):
 </body>
 </html>"""
 
-    with open("CompilerErrReport.html", "w") as file:
+    output_file = "CompilerErrReport.html"
+    with open(output_file, "w") as file:
         file.write(html_content)
+
+    # Open the generated HTML file in the default web browser
+    webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
 # Check each location for build failures
 federal_builds = []
