@@ -17,7 +17,7 @@ product_families = {
 }
 
 # Define the build types for federal and states separately
-federal_build_types = ["DEV_DEBUG", "DEV_FEDMATH_DEBUG"]
+federal_build_types = ["DEV_FEDMATH_DEBUG"]
 state_build_types = ["DEV_DEBUG"]
 
 # Define a function to check for "Build FAILED" in a file
