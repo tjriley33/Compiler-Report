@@ -55,11 +55,12 @@ def generate_html_report(federal_builds, state_builds):
 <th width="10%" align="center">Package</th>
 <th width="15%" align="center">Build</th>
 <th width="7%" align="center">Status</th>
-<th width="54%" align="center">Compiler.err File Path</th>
+<th width="34%" align="center">Compiler.err File Path</th>
+<th width="20%" align="center">Timestamp</th>
 </tr>"""
 
     for build in federal_builds:
-        product, product_family, state, package, build_type, file_path = build
+        product, product_family, state, package, build_type, file_path, timestamp = build
         html_content += f"""
 <tr>
 <td align="center">{product}</td>
@@ -68,6 +69,7 @@ def generate_html_report(federal_builds, state_builds):
 <td align="center">{build_type}</td>
 <td align="center"><font color="red">BUILD FAILED</font></td>
 <td align="center"><a href="{file_path}" target="_blank">{file_path}</a></td>
+<td align="center">{timestamp}</td>
 </tr>"""
 
     html_content += """
@@ -84,11 +86,12 @@ def generate_html_report(federal_builds, state_builds):
 <th width="10%" align="center">Package</th>
 <th width="15%" align="center">Build</th>
 <th width="7%" align="center">Status</th>
-<th width="54%" align="center">Compiler.err File Path</th>
+<th width="34%" align="center">Compiler.err File Path</th>
+<th width="20%" align="center">Timestamp</th>
 </tr>"""
 
     for build in state_builds:
-        product, product_family, state, package, build_type, file_path = build
+        product, product_family, state, package, build_type, file_path, timestamp = build
         html_content += f"""
 <tr>
 <td align="center">{product}</td>
@@ -98,6 +101,7 @@ def generate_html_report(federal_builds, state_builds):
 <td align="center">{build_type}</td>
 <td align="center"><font color="red">BUILD FAILED</font></td>
 <td align="center"><a href="{file_path}" target="_blank">{file_path}</a></td>
+<td align="center">{timestamp}</td>
 </tr>"""
 
     html_content += """
@@ -123,14 +127,16 @@ for product in products:
                 for build_type in federal_build_types:
                     file_path = os.path.join(base_path, product, product_family, package, build_type, "compiler.err")
                     if check_build_failed(file_path):
-                        federal_builds.append((product, product_family, "", package, build_type, file_path))
+                        timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+                        federal_builds.append((product, product_family, "", package, build_type, file_path, timestamp))
         elif product_family == "States":
             for state in packages:
                 for package in federal_packages:
                     for build_type in state_build_types:
                         file_path = os.path.join(base_path, product, product_family, state, package, build_type, "compiler.err")
                         if check_build_failed(file_path):
-                            state_builds.append((product, product_family, state, package, build_type, file_path))
+                            timestamp = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+                            state_builds.append((product, product_family, state, package, build_type, file_path, timestamp))
 
 # Sort state builds by state
 state_builds.sort(key=lambda x: x[2])
