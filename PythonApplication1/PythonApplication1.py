@@ -10,7 +10,7 @@ products = ["Builds", "DrakeBuilds"]
 
 # Define the product families and their respective directories
 federal_packages = ["C_Corporation", "Partnership", "S_Corporation", "Exempt", "Individual", "Estates_And_Trusts"]
-states_abbr = ["AL", "AR", "AZ", "CT", "DC", "DE", "GA", "HI", "ID", "IN", "MA", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NH", "NM", "OR", "PA", "RI", "WI", "WV", "CA", "CO", "FL", "IL", "KS", "KY", "LA", "MD", "NE", "NJ", "NV", "NY", "OH", "OK", "SC", "TN", "TX", "UT", "VA", "VT", "WA"]
+states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 
 product_families = {
     "Federal": federal_packages,
