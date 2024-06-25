@@ -12,7 +12,7 @@ products = ["Builds", "DrakeBuilds"]
 
 # Define the product families and their respective directories
 federal_packages = ["C_Corporation", "Partnership", "S_Corporation", "Exempt", "Individual", "Estates_And_Trusts"]
-states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI"]
 
 product_families = {
     "Federal": federal_packages,
@@ -174,7 +174,7 @@ def unselect_all_states(selected_states):
 def main():
     root = tk.Tk()
     root.title("Compiler.err Report Generator")
-    root.geometry("350x600")
+    root.geometry("400x700")
 
     label = tk.Label(root, text="Generate Compiler.err Report")
     label.pack(pady=10)
@@ -193,8 +193,21 @@ def main():
     for i, state in enumerate(states_abbr):
         selected_states[state] = tk.BooleanVar()
         state_checkbox = tk.Checkbutton(checkbox_frame, text=state, variable=selected_states[state])
-        state_checkbox.grid(row=(i//5)+1, column=i%5, sticky='w')
+        state_checkbox.grid(row=(i // 5) + 1, column=i % 5, sticky='w')
 
     # Add Select All and Unselect All buttons
     select_all_button = tk.Button(root, text="Select All States", command=lambda: select_all_states(selected_states))
-    select_all_button.pack(pady=
+    select_all_button.pack(pady=5)
+
+    unselect_all_button = tk.Button(root, text="Unselect All States", command=lambda: unselect_all_states(selected_states))
+    unselect_all_button.pack(pady=5)
+
+    generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button, selected_federal, selected_states)).start())
+    generate_button.pack(pady=20)
+
+    root.mainloop()
+
+
+# Run the main function
+if __name__ == "__main__":
+    main()
