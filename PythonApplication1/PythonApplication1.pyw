@@ -12,10 +12,6 @@ products = ["Builds", "DrakeBuilds"]
 federal_packages = ["C_Corporation", "Partnership", "S_Corporation", "Exempt", "Individual", "Estates_And_Trusts"]
 states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI"]
 
-# Define the build types for federal and states separately
-federal_build_types = ["DEV_FEDMATH_DEBUG"]
-state_build_types = ["DEV_DEBUG"]
-
 config_file = 'settings.ini'
 
 # Define a function to check for "Build FAILED" in a file
@@ -122,7 +118,7 @@ def generate_html_report(federal_builds, state_builds, year):
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
 # Check each location for build failures
-def check_builds(button, selected_federal, selected_states, year, selected_packages_list):
+def check_builds(button, selected_federal, selected_states, year, selected_packages_list, env_var, build_var):
     button.config(text="Compiling...", state=tk.DISABLED, bg="blue")
     button.update_idletasks()
 
@@ -131,7 +127,11 @@ def check_builds(button, selected_federal, selected_states, year, selected_packa
     federal_builds = []
     state_builds = []
 
-    selected_packages = {package: tk.BooleanVar(value=(package in selected_packages_list)) for package in federal_packages}
+    env = env_var.get()
+    build = build_var.get()
+
+    federal_build_types = [f"{env}_FEDMATH_{build}"]
+    state_build_types = [f"{env}_{build}"]
 
     if selected_federal.get():
         for product in products:
@@ -161,7 +161,7 @@ def check_builds(button, selected_federal, selected_states, year, selected_packa
     button.config(text="Generate Report", state=tk.NORMAL, bg="SystemButtonFace")
     button.update_idletasks()
 
-    save_settings(year, selected_federal, selected_states, selected_packages)
+    save_settings(year, selected_federal, selected_states, selected_packages_list, env_var, build_var)
 
 def select_all_states(selected_states):
     for state_var in selected_states.values():
@@ -179,28 +179,30 @@ def unselect_all_packages(selected_packages):
     for package_var in selected_packages.values():
         package_var.set(False)
 
-def save_settings(year, selected_federal, selected_states, selected_packages):
+def save_settings(year, selected_federal, selected_states, selected_packages_list, env_var, build_var):
     config = configparser.ConfigParser()
-    config['DEFAULT'] = {'Year': year, 'Federal': str(selected_federal.get())}
+    config['DEFAULT'] = {'Year': year, 'Federal': str(selected_federal.get()), 'Env': env_var.get(), 'Build': build_var.get()}
     config['States'] = {state: str(var.get()) for state, var in selected_states.items()}
-    config['Packages'] = {package: str(var.get()) for package, var in selected_packages.items()}
+    config['Packages'] = {package: str(package in selected_packages_list) for package in federal_packages}
 
     with open(config_file, 'w') as configfile:
         config.write(configfile)
+    print("Settings saved.")
 
 def load_settings():
     config = configparser.ConfigParser()
     config.read(config_file)
 
-    year = config.get('DEFAULT', 'Year', fallback='2024')
-    federal = config.getboolean('DEFAULT', 'Federal', fallback=True)
+    year = config['DEFAULT'].get('Year', '2024')
+    federal = config['DEFAULT'].getboolean('Federal', True)
+    env = config['DEFAULT'].get('Env', 'DEV')
+    build = config['DEFAULT'].get('Build', 'DEBUG')
+    selected_states = {state: tk.BooleanVar(value=config['States'].getboolean(state, True)) for state in states_abbr}
+    selected_packages = [package for package in federal_packages if config['Packages'].getboolean(package, True)]
 
-    selected_states = {state: tk.BooleanVar(value=config.getboolean('States', state, fallback=True)) for state in states_abbr}
-    selected_packages = {package: tk.BooleanVar(value=config.getboolean('Packages', package, fallback=True)) for package in federal_packages}
+    return year, federal, selected_states, selected_packages, env, build
 
-    return year, federal, selected_states, selected_packages
-
-def reset_defaults(year_entry, selected_federal, selected_states, selected_packages):
+def reset_defaults(year_entry, selected_federal, selected_states, selected_packages, env_var, build_var):
     year_entry.delete(0, tk.END)
     year_entry.insert(0, "2024")
 
@@ -212,38 +214,58 @@ def reset_defaults(year_entry, selected_federal, selected_states, selected_packa
     for package_var in selected_packages.values():
         package_var.set(True)
 
-    save_settings("2024", selected_federal, selected_states, selected_packages)
+    env_var.set("DEV")
+    build_var.set("DEBUG")
 
-def on_closing(root, year_entry, selected_federal, selected_states, selected_packages):
-    save_settings(year_entry.get(), selected_federal, selected_states, selected_packages)
+    save_settings("2024", selected_federal, selected_states, [package for package in federal_packages], env_var, build_var)
+    print("Defaults reset and saved.")
+
+def on_closing(root, year_entry, selected_federal, selected_states, selected_packages, env_var, build_var):
+    save_settings(year_entry.get(), selected_federal, selected_states, [package for package, var in selected_packages.items() if var.get()], env_var, build_var)
     root.destroy()
 
 # Define the main function to create the GUI
 def main():
     root = tk.Tk()
     root.title("Compiler.err Report Generator")
-    root.geometry("500x800")
+    root.geometry("600x800")
 
-    year, federal, selected_states, selected_packages = load_settings()
+    year, federal, selected_states, selected_packages_list, env, build = load_settings()
+
+    selected_packages = {package: tk.BooleanVar(value=(package in selected_packages_list)) for package in federal_packages}
 
     label = tk.Label(root, text="Generate Compiler.err Report")
-    label.pack(pady=10)
+    label.pack(pady=5)
 
     year_frame = tk.Frame(root)
-    year_frame.pack(pady=10)
+    year_frame.pack(pady=5)
     year_label = tk.Label(year_frame, text="Year:")
     year_label.pack(side=tk.LEFT)
     year_entry = tk.Entry(year_frame)
     year_entry.insert(0, year)
     year_entry.pack(side=tk.LEFT)
 
+    # Create a frame for the environment radio buttons
+    env_frame = tk.Frame(root)
+    env_frame.pack(pady=5)
+    env_var = tk.StringVar(value=env)
+    tk.Radiobutton(env_frame, text="Dev", variable=env_var, value="DEV").pack(side=tk.LEFT)
+    tk.Radiobutton(env_frame, text="Prod", variable=env_var, value="PROD").pack(side=tk.LEFT)
+
+    # Create a frame for the build type radio buttons
+    build_frame = tk.Frame(root)
+    build_frame.pack(pady=5)
+    build_var = tk.StringVar(value=build)
+    tk.Radiobutton(build_frame, text="Debug", variable=build_var, value="DEBUG").pack(side=tk.LEFT)
+    tk.Radiobutton(build_frame, text="Release", variable=build_var, value="RELEASE").pack(side=tk.LEFT)
+
     # Create a frame for the package checkboxes
     package_frame = tk.Frame(root)
-    package_frame.pack(pady=10)
-    
+    package_frame.pack(pady=5)
+
     package_label = tk.Label(package_frame, text="Packages:")
     package_label.grid(row=0, column=0, columnspan=2)
-    
+
     for i, package in enumerate(federal_packages):
         package_checkbox = tk.Checkbutton(package_frame, text=package, variable=selected_packages[package])
         package_checkbox.grid(row=(i // 2) + 1, column=i % 2, sticky='w')
@@ -256,26 +278,26 @@ def main():
 
     # Create a frame for the federal checkbox
     federal_frame = tk.Frame(root)
-    federal_frame.pack(pady=10)
-    
+    federal_frame.pack(pady=5)
+
     selected_federal = tk.BooleanVar(value=federal)
     federal_checkbox = tk.Checkbutton(federal_frame, text="Federal", variable=selected_federal)
     federal_checkbox.pack()
 
     # Create a frame for the state checkboxes
     state_frame = tk.Frame(root)
-    state_frame.pack(pady=10)
-    
+    state_frame.pack(pady=5)
+
     state_label = tk.Label(state_frame, text="States:")
-    state_label.grid(row=0, column=0, columnspan=5)
+    state_label.grid(row=0, column=0, columnspan=6)
 
     for i, state in enumerate(states_abbr):
         state_checkbox = tk.Checkbutton(state_frame, text=state, variable=selected_states[state])
-        state_checkbox.grid(row=(i // 5) + 1, column=i % 5, sticky='w')
+        state_checkbox.grid(row=(i // 6) + 1, column=i % 6, sticky='w')
 
     # Create a frame for the state select/unselect buttons
     state_button_frame = tk.Frame(root)
-    state_button_frame.pack(pady=10)
+    state_button_frame.pack(pady=5)
 
     select_all_states_button = tk.Button(state_button_frame, text="Select All States", command=lambda: select_all_states(selected_states))
     select_all_states_button.pack(side=tk.LEFT, padx=5)
@@ -283,13 +305,13 @@ def main():
     unselect_all_states_button = tk.Button(state_button_frame, text="Unselect All States", command=lambda: unselect_all_states(selected_states))
     unselect_all_states_button.pack(side=tk.LEFT, padx=5)
 
-    generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button, selected_federal, selected_states, year_entry.get(), [package for package, var in selected_packages.items() if var.get()])).start())
-    generate_button.pack(pady=20)
+    generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button, selected_federal, selected_states, year_entry.get(), [package for package, var in selected_packages.items() if var.get()], env_var, build_var)).start())
+    generate_button.pack(pady=5)
 
-    reset_button = tk.Button(root, text="Reset to Defaults", command=lambda: reset_defaults(year_entry, selected_federal, selected_states, selected_packages))
-    reset_button.pack(pady=10)
+    reset_button = tk.Button(root, text="Reset to Defaults", command=lambda: reset_defaults(year_entry, selected_federal, selected_states, selected_packages, env_var, build_var))
+    reset_button.pack(pady=5)
 
-    root.protocol("WM_DELETE_WINDOW", lambda: on_closing(root, year_entry, selected_federal, selected_states, selected_packages))
+    root.protocol("WM_DELETE_WINDOW", lambda: on_closing(root, year_entry, selected_federal, selected_states, selected_packages, env_var, build_var))
 
     root.mainloop()
 
