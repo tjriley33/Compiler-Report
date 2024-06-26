@@ -191,12 +191,16 @@ def save_settings(year, selected_federal, selected_states, selected_packages_lis
 
 def load_settings():
     config = configparser.ConfigParser()
+    if not os.path.exists(config_file):
+        save_settings('2024', tk.BooleanVar(value=True), {state: tk.BooleanVar(value=True) for state in states_abbr}, federal_packages, tk.StringVar(value="DEV"), tk.StringVar(value="DEBUG"))
+
     config.read(config_file)
 
     year = config['DEFAULT'].get('Year', '2024')
     federal = config['DEFAULT'].getboolean('Federal', True)
     env = config['DEFAULT'].get('Env', 'DEV')
     build = config['DEFAULT'].get('Build', 'DEBUG')
+
     selected_states = {state: tk.BooleanVar(value=config['States'].getboolean(state, True)) for state in states_abbr}
     selected_packages = [package for package in federal_packages if config['Packages'].getboolean(package, True)]
 
