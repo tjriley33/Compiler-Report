@@ -28,17 +28,17 @@ def check_build_failed(file_path):
     return False
 
 # Define a function to generate the HTML report
-def generate_html_report(federal_builds, state_builds):
+def generate_html_report(federal_builds, state_builds, year):
     report_time = datetime.now().strftime("%m-%d-%Y %I:%M %p")
 
     html_content = f"""
 <html>
 <head>
-<title>2024 Compiler.err Report</title>
+<title>{year} Compiler.err Report</title>
 <script src="https://kryogenix.org/code/browser/sorttable/sorttable.js"></script>
 </head>
 <body>
-<center><h1 style="margin-bottom:0">2024 Compiler.err Report</h1></center>
+<center><h1 style="margin-bottom:0">{year} Compiler.err Report</h1></center>
 <center><h3 style="margin-top:0">Run Time: {report_time}</h3></center>
 <p>
 <hr style="height:3px;border-width:0;color:gray;background-color:gray">
@@ -151,7 +151,7 @@ def check_builds(button, selected_federal, selected_states, year, selected_packa
     state_builds.sort(key=lambda x: x[2])
 
     # Generate the HTML report
-    generate_html_report(federal_builds, state_builds)
+    generate_html_report(federal_builds, state_builds, year)
 
     button.config(text="Generate Report", state=tk.NORMAL, bg="SystemButtonFace")
     button.update_idletasks()
