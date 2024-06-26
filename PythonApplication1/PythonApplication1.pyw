@@ -3,6 +3,7 @@ from datetime import datetime
 import webbrowser
 import tkinter as tk
 from threading import Thread
+import configparser
 
 # Define the products
 products = ["Builds", "DrakeBuilds"]
@@ -14,6 +15,8 @@ states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
 # Define the build types for federal and states separately
 federal_build_types = ["DEV_FEDMATH_DEBUG"]
 state_build_types = ["DEV_DEBUG"]
+
+config_file = 'settings.ini'
 
 # Define a function to check for "Build FAILED" in a file
 def check_build_failed(file_path):
@@ -119,7 +122,7 @@ def generate_html_report(federal_builds, state_builds, year):
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
 # Check each location for build failures
-def check_builds(button, selected_federal, selected_states, year, selected_packages):
+def check_builds(button, selected_federal, selected_states, year, selected_packages_list):
     button.config(text="Compiling...", state=tk.DISABLED, bg="blue")
     button.update_idletasks()
 
@@ -128,9 +131,11 @@ def check_builds(button, selected_federal, selected_states, year, selected_packa
     federal_builds = []
     state_builds = []
 
+    selected_packages = {package: tk.BooleanVar(value=(package in selected_packages_list)) for package in federal_packages}
+
     if selected_federal.get():
         for product in products:
-            for package in selected_packages:
+            for package in selected_packages_list:
                 for build_type in federal_build_types:
                     file_path = os.path.join(base_path, product, "Federal", package, build_type, "compiler.err")
                     if check_build_failed(file_path):
@@ -140,7 +145,7 @@ def check_builds(button, selected_federal, selected_states, year, selected_packa
     for state in states_abbr:
         if selected_states[state].get():
             for product in products:
-                for package in selected_packages:
+                for package in selected_packages_list:
                     for build_type in state_build_types:
                         file_path = os.path.join(base_path, product, "States", state, package, build_type, "compiler.err")
                         if check_build_failed(file_path):
@@ -155,6 +160,8 @@ def check_builds(button, selected_federal, selected_states, year, selected_packa
 
     button.config(text="Generate Report", state=tk.NORMAL, bg="SystemButtonFace")
     button.update_idletasks()
+
+    save_settings(year, selected_federal, selected_states, selected_packages)
 
 def select_all_states(selected_states):
     for state_var in selected_states.values():
@@ -172,36 +179,72 @@ def unselect_all_packages(selected_packages):
     for package_var in selected_packages.values():
         package_var.set(False)
 
+def save_settings(year, selected_federal, selected_states, selected_packages):
+    config = configparser.ConfigParser()
+    config['DEFAULT'] = {'Year': year, 'Federal': str(selected_federal.get())}
+    config['States'] = {state: str(var.get()) for state, var in selected_states.items()}
+    config['Packages'] = {package: str(var.get()) for package, var in selected_packages.items()}
+
+    with open(config_file, 'w') as configfile:
+        config.write(configfile)
+
+def load_settings():
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    year = config.get('DEFAULT', 'Year', fallback='2024')
+    federal = config.getboolean('DEFAULT', 'Federal', fallback=True)
+
+    selected_states = {state: tk.BooleanVar(value=config.getboolean('States', state, fallback=True)) for state in states_abbr}
+    selected_packages = {package: tk.BooleanVar(value=config.getboolean('Packages', package, fallback=True)) for package in federal_packages}
+
+    return year, federal, selected_states, selected_packages
+
+def reset_defaults(year_entry, selected_federal, selected_states, selected_packages):
+    year_entry.delete(0, tk.END)
+    year_entry.insert(0, "2024")
+
+    selected_federal.set(True)
+
+    for state_var in selected_states.values():
+        state_var.set(True)
+
+    for package_var in selected_packages.values():
+        package_var.set(True)
+
+    save_settings("2024", selected_federal, selected_states, selected_packages)
+
+def on_closing(root, year_entry, selected_federal, selected_states, selected_packages):
+    save_settings(year_entry.get(), selected_federal, selected_states, selected_packages)
+    root.destroy()
+
 # Define the main function to create the GUI
 def main():
     root = tk.Tk()
     root.title("Compiler.err Report Generator")
-    root.geometry("600x900")
+    root.geometry("500x800")
+
+    year, federal, selected_states, selected_packages = load_settings()
 
     label = tk.Label(root, text="Generate Compiler.err Report")
     label.pack(pady=10)
 
-    # Create a frame for the year input
     year_frame = tk.Frame(root)
     year_frame.pack(pady=10)
-    
     year_label = tk.Label(year_frame, text="Year:")
     year_label.pack(side=tk.LEFT)
-    
     year_entry = tk.Entry(year_frame)
-    year_entry.insert(0, "2024")
+    year_entry.insert(0, year)
     year_entry.pack(side=tk.LEFT)
 
-    # Create a frame for the package selection
+    # Create a frame for the package checkboxes
     package_frame = tk.Frame(root)
     package_frame.pack(pady=10)
-
+    
     package_label = tk.Label(package_frame, text="Packages:")
     package_label.grid(row=0, column=0, columnspan=2)
-
-    selected_packages = {}
+    
     for i, package in enumerate(federal_packages):
-        selected_packages[package] = tk.BooleanVar(value=True)
         package_checkbox = tk.Checkbutton(package_frame, text=package, variable=selected_packages[package])
         package_checkbox.grid(row=(i // 2) + 1, column=i % 2, sticky='w')
 
@@ -215,7 +258,7 @@ def main():
     federal_frame = tk.Frame(root)
     federal_frame.pack(pady=10)
     
-    selected_federal = tk.BooleanVar(value=True)
+    selected_federal = tk.BooleanVar(value=federal)
     federal_checkbox = tk.Checkbutton(federal_frame, text="Federal", variable=selected_federal)
     federal_checkbox.pack()
 
@@ -226,9 +269,7 @@ def main():
     state_label = tk.Label(state_frame, text="States:")
     state_label.grid(row=0, column=0, columnspan=5)
 
-    selected_states = {}
     for i, state in enumerate(states_abbr):
-        selected_states[state] = tk.BooleanVar(value=True)
         state_checkbox = tk.Checkbutton(state_frame, text=state, variable=selected_states[state])
         state_checkbox.grid(row=(i // 5) + 1, column=i % 5, sticky='w')
 
@@ -244,6 +285,11 @@ def main():
 
     generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button, selected_federal, selected_states, year_entry.get(), [package for package, var in selected_packages.items() if var.get()])).start())
     generate_button.pack(pady=20)
+
+    reset_button = tk.Button(root, text="Reset to Defaults", command=lambda: reset_defaults(year_entry, selected_federal, selected_states, selected_packages))
+    reset_button.pack(pady=10)
+
+    root.protocol("WM_DELETE_WINDOW", lambda: on_closing(root, year_entry, selected_federal, selected_states, selected_packages))
 
     root.mainloop()
 
