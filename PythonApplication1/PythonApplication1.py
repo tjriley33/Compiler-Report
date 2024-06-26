@@ -4,20 +4,12 @@ import webbrowser
 import tkinter as tk
 from threading import Thread
 
-# Define the base path
-base_path = r"\\mhvfs01.taxact.com\Development\Tax2024"
-
 # Define the products
 products = ["Builds", "DrakeBuilds"]
 
 # Define the product families and their respective directories
 federal_packages = ["C_Corporation", "Partnership", "S_Corporation", "Exempt", "Individual", "Estates_And_Trusts"]
-states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI"]
-
-product_families = {
-    "Federal": federal_packages,
-    "States": states_abbr
-}
+states_abbr = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI"]
 
 # Define the build types for federal and states separately
 federal_build_types = ["DEV_FEDMATH_DEBUG"]
@@ -127,16 +119,18 @@ def generate_html_report(federal_builds, state_builds):
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
 # Check each location for build failures
-def check_builds(button, selected_federal, selected_states):
+def check_builds(button, selected_federal, selected_states, year, selected_packages):
     button.config(text="Compiling...", state=tk.DISABLED, bg="blue")
     button.update_idletasks()
+
+    base_path = rf"\\mhvfs01.taxact.com\Development\Tax{year}"
 
     federal_builds = []
     state_builds = []
 
     if selected_federal.get():
         for product in products:
-            for package in federal_packages:
+            for package in selected_packages:
                 for build_type in federal_build_types:
                     file_path = os.path.join(base_path, product, "Federal", package, build_type, "compiler.err")
                     if check_build_failed(file_path):
@@ -146,7 +140,7 @@ def check_builds(button, selected_federal, selected_states):
     for state in states_abbr:
         if selected_states[state].get():
             for product in products:
-                for package in federal_packages:
+                for package in selected_packages:
                     for build_type in state_build_types:
                         file_path = os.path.join(base_path, product, "States", state, package, build_type, "compiler.err")
                         if check_build_failed(file_path):
@@ -170,43 +164,88 @@ def unselect_all_states(selected_states):
     for state_var in selected_states.values():
         state_var.set(False)
 
+def select_all_packages(selected_packages):
+    for package_var in selected_packages.values():
+        package_var.set(True)
+
+def unselect_all_packages(selected_packages):
+    for package_var in selected_packages.values():
+        package_var.set(False)
+
 # Define the main function to create the GUI
 def main():
     root = tk.Tk()
     root.title("Compiler.err Report Generator")
-    root.geometry("400x700")
+    root.geometry("600x900")
 
     label = tk.Label(root, text="Generate Compiler.err Report")
     label.pack(pady=10)
 
-    # Create a frame for the checkboxes
-    checkbox_frame = tk.Frame(root)
-    checkbox_frame.pack(pady=10)
+    # Create a frame for the year input
+    year_frame = tk.Frame(root)
+    year_frame.pack(pady=10)
+    
+    year_label = tk.Label(year_frame, text="Year:")
+    year_label.pack(side=tk.LEFT)
+    
+    year_entry = tk.Entry(year_frame)
+    year_entry.insert(0, "2024")
+    year_entry.pack(side=tk.LEFT)
 
-    # Add Federal checkbox
-    selected_federal = tk.BooleanVar()
-    federal_checkbox = tk.Checkbutton(checkbox_frame, text="Federal", variable=selected_federal)
-    federal_checkbox.grid(row=0, column=0, sticky='w')
+    # Create a frame for the package selection
+    package_frame = tk.Frame(root)
+    package_frame.pack(pady=10)
 
-    # Add State checkboxes
+    package_label = tk.Label(package_frame, text="Packages:")
+    package_label.grid(row=0, column=0, columnspan=2)
+
+    selected_packages = {}
+    for i, package in enumerate(federal_packages):
+        selected_packages[package] = tk.BooleanVar(value=True)
+        package_checkbox = tk.Checkbutton(package_frame, text=package, variable=selected_packages[package])
+        package_checkbox.grid(row=(i // 2) + 1, column=i % 2, sticky='w')
+
+    select_all_packages_button = tk.Button(package_frame, text="Select All Packages", command=lambda: select_all_packages(selected_packages))
+    select_all_packages_button.grid(row=len(federal_packages) // 2 + 2, column=0, pady=5)
+
+    unselect_all_packages_button = tk.Button(package_frame, text="Unselect All Packages", command=lambda: unselect_all_packages(selected_packages))
+    unselect_all_packages_button.grid(row=len(federal_packages) // 2 + 2, column=1, pady=5)
+
+    # Create a frame for the federal checkbox
+    federal_frame = tk.Frame(root)
+    federal_frame.pack(pady=10)
+    
+    selected_federal = tk.BooleanVar(value=True)
+    federal_checkbox = tk.Checkbutton(federal_frame, text="Federal", variable=selected_federal)
+    federal_checkbox.pack()
+
+    # Create a frame for the state checkboxes
+    state_frame = tk.Frame(root)
+    state_frame.pack(pady=10)
+    
+    state_label = tk.Label(state_frame, text="States:")
+    state_label.grid(row=0, column=0, columnspan=5)
+
     selected_states = {}
     for i, state in enumerate(states_abbr):
-        selected_states[state] = tk.BooleanVar()
-        state_checkbox = tk.Checkbutton(checkbox_frame, text=state, variable=selected_states[state])
+        selected_states[state] = tk.BooleanVar(value=True)
+        state_checkbox = tk.Checkbutton(state_frame, text=state, variable=selected_states[state])
         state_checkbox.grid(row=(i // 5) + 1, column=i % 5, sticky='w')
 
-    # Add Select All and Unselect All buttons
-    select_all_button = tk.Button(root, text="Select All States", command=lambda: select_all_states(selected_states))
-    select_all_button.pack(pady=5)
+    # Create a frame for the state select/unselect buttons
+    state_button_frame = tk.Frame(root)
+    state_button_frame.pack(pady=10)
 
-    unselect_all_button = tk.Button(root, text="Unselect All States", command=lambda: unselect_all_states(selected_states))
-    unselect_all_button.pack(pady=5)
+    select_all_states_button = tk.Button(state_button_frame, text="Select All States", command=lambda: select_all_states(selected_states))
+    select_all_states_button.pack(side=tk.LEFT, padx=5)
 
-    generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button, selected_federal, selected_states)).start())
+    unselect_all_states_button = tk.Button(state_button_frame, text="Unselect All States", command=lambda: unselect_all_states(selected_states))
+    unselect_all_states_button.pack(side=tk.LEFT, padx=5)
+
+    generate_button = tk.Button(root, text="Generate Report", command=lambda: Thread(target=check_builds, args=(generate_button, selected_federal, selected_states, year_entry.get(), [package for package, var in selected_packages.items() if var.get()])).start())
     generate_button.pack(pady=20)
 
     root.mainloop()
-
 
 # Run the main function
 if __name__ == "__main__":
